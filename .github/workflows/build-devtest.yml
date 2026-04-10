@@ -320,9 +320,9 @@ jobs:
         if: matrix.target == 'aarch64-pc-windows-msvc'
         shell: bash
         run: |
-          echo "CC=clang" >> "$GITHUB_ENV"
-          echo "CXX=clang++" >> "$GITHUB_ENV"
-          echo "Set CC=clang and CXX=clang++ for ARM64 Windows build"
+          echo "CC=clang-cl" >> "$GITHUB_ENV"
+          echo "CXX=clang-cl" >> "$GITHUB_ENV"
+          echo "Set CC=clang-cl and CXX=clang-cl for ARM64 Windows build"
 
       # Determine build features for acceleration
       - name: Determine build features
