@@ -38,9 +38,13 @@ jobs:
             target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin
           - platform: windows-latest
-            platform-name: Windows
+            platform-name: Windows (x64)
             target: x86_64-pc-windows-msvc
             args: --target x86_64-pc-windows-msvc
+          - platform: windows-11-arm
+            platform-name: Windows (ARM64)
+            target: aarch64-pc-windows-msvc
+            args: --target aarch64-pc-windows-msvc
           - platform: ubuntu-22.04
             platform-name: Linux (Ubuntu 22.04)
             target: x86_64-unknown-linux-gnu
@@ -138,7 +142,8 @@ jobs:
           sudo apt-get install -y mesa-vulkan-drivers
 
       - name: Install Vulkan SDK (Windows)
-        if: contains(matrix.platform, 'windows')
+        # TODO: Enable Vulkan SDK for aarch64 once the install action supports ARM64 Windows
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         uses: humbletim/install-vulkan-sdk@v1.2
         with:
           version: 1.4.309.0
@@ -317,10 +322,13 @@ jobs:
         run: |
           FEATURES=""
 
-          # Windows: Use Vulkan for GPU acceleration
-          if [[ "${{ matrix.platform }}" == *"windows"* ]]; then
+          # Windows x64: Use Vulkan for GPU acceleration
+          # TODO: Enable Vulkan for aarch64 once Vulkan SDK supports ARM64 Windows
+          if [[ "${{ matrix.target }}" == "x86_64-pc-windows-msvc" ]]; then
             FEATURES="--features vulkan"
-            echo "Windows build with Vulkan GPU acceleration"
+            echo "Windows x64 build with Vulkan GPU acceleration"
+          elif [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            echo "Windows ARM64 build (CPU-only, Vulkan not yet supported)"
           fi
 
           # Linux: Use OpenBLAS for optimized CPU performance
@@ -346,9 +354,12 @@ jobs:
           if [[ "${{ matrix.platform }}" == *"macos"* ]]; then
             LLAMA_FEATURES="--features metal"
             echo "Using Metal GPU acceleration for macOS"
-          elif [[ "${{ matrix.platform }}" == *"windows"* ]]; then
+          elif [[ "${{ matrix.target }}" == "x86_64-pc-windows-msvc" ]]; then
             LLAMA_FEATURES="--features vulkan"
-            echo "Using Vulkan GPU acceleration for Windows"
+            echo "Using Vulkan GPU acceleration for Windows x64"
+          elif [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            # TODO: Enable Vulkan for aarch64 once Vulkan SDK supports ARM64 Windows
+            echo "Using CPU-only mode for Windows ARM64"
           else
             echo "Using CPU-only mode for Linux"
           fi
@@ -461,7 +472,7 @@ jobs:
         if: contains(matrix.platform, 'windows') && github.event.inputs.sign-build == 'true'
         shell: pwsh
         run: |
-          $msiPath = Get-ChildItem -Path "target/x86_64-pc-windows-msvc/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1 -ExpandProperty FullName
+          $msiPath = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1 -ExpandProperty FullName
           if ($msiPath) {
             Write-Host "Verifying MSI signature: $msiPath"
             Get-AuthenticodeSignature -FilePath "$msiPath" | Format-List
@@ -482,6 +493,10 @@ jobs:
             target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig
             target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
+            target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
+            target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi.sig
+            target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
+            target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
             target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
             target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
             target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
