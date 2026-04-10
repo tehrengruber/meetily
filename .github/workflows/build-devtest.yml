@@ -315,6 +315,15 @@ jobs:
           Write-Host "============================================================"
           Write-Host ""
 
+      # ARM64 Windows requires clang instead of MSVC (llama.cpp/ggml requirement)
+      - name: Set clang compiler for ARM64 Windows
+        if: matrix.target == 'aarch64-pc-windows-msvc'
+        shell: bash
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+          echo "Set CC=clang and CXX=clang++ for ARM64 Windows build"
+
       # Determine build features for acceleration
       - name: Determine build features
         id: build-features
