@@ -322,7 +322,10 @@ jobs:
         run: |
           echo "CC=clang-cl" >> "$GITHUB_ENV"
           echo "CXX=clang-cl" >> "$GITHUB_ENV"
-          echo "Set CC=clang-cl and CXX=clang-cl for ARM64 Windows build"
+          # Enable exceptions
+          echo "CFLAGS=/EHsc" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=/EHsc" >> "$GITHUB_ENV"
+          echo "Set CC/CXX=clang-cl for ARM64 Windows build"
 
       # Determine build features for acceleration
       - name: Determine build features
