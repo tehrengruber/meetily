@@ -322,9 +322,12 @@ jobs:
         run: |
           echo "CC=clang-cl" >> "$GITHUB_ENV"
           echo "CXX=clang-cl" >> "$GITHUB_ENV"
-          # Enable exceptions
-          echo "CFLAGS=/EHsc" >> "$GITHUB_ENV"
-          echo "CXXFLAGS=/EHsc" >> "$GITHUB_ENV"
+          # Enable exceptions. Use the dash form '-EHsc' rather than '/EHsc':
+          # leading-slash values get MSYS-translated to 'C:/Program Files/Git/EHsc'
+          # when downstream `shell: bash` steps inherit the env var, which then
+          # breaks the cc-rs clang-cl invocation.
+          echo "CFLAGS=-EHsc" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=-EHsc" >> "$GITHUB_ENV"
           echo "Set CC/CXX=clang-cl for ARM64 Windows build"
 
       # Determine build features for acceleration
