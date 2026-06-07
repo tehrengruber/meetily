@@ -347,6 +347,51 @@ jobs:
           # x64-hosted cross.
           arch: arm64
 
+      # Diagnostic: previous run showed rustc invoking
+      # 'C:\Program Files\Git\usr\bin\link.exe' (GNU coreutils) even though
+      # the post-vcvars PATH dump had MSVC's HostARM64\ARM64 at the front.
+      # Print every link.exe Windows PATH search would find and what the
+      # HostARM64\ARM64 / HostX64\ARM64 bin directories actually contain so
+      # we can see whether the native ARM64-host toolset is missing link.exe.
+      - name: Diagnose link.exe resolution (ARM64)
+        if: matrix.target == 'aarch64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          Write-Host "=== All link.exe visible on PATH (in search order) ==="
+          Get-Command link.exe -All -ErrorAction SilentlyContinue |
+            Select-Object Source | Format-Table -AutoSize
+          Write-Host "=== VCToolsInstallDir = $env:VCToolsInstallDir ==="
+          foreach ($sub in @('HostARM64\ARM64', 'HostX64\ARM64', 'HostX64\x64')) {
+            $dir = Join-Path $env:VCToolsInstallDir "bin\$sub"
+            Write-Host "--- $dir ---"
+            if (Test-Path $dir) {
+              Get-ChildItem $dir -Filter *.exe |
+                Select-Object Name | Format-Table -AutoSize
+            } else {
+              Write-Host "(does not exist)"
+            }
+          }
+
+      # vcvars puts MSVC's HostARM64\ARM64 at the front of PATH, but the
+      # previous run still resolved 'link.exe' to Git's coreutils variant.
+      # Pin the linker by absolute path so rustc doesn't rely on PATH search
+      # at all. The diagnostic step above will tell us why PATH search misses
+      # the right binary; this pin makes the build robust regardless.
+      - name: Pin MSVC linker for cargo (ARM64)
+        if: matrix.target == 'aarch64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          $linkExe = (Get-Command link.exe -All |
+            Where-Object { $_.Source -like '*VC\Tools\MSVC*' } |
+            Select-Object -First 1).Source
+          if (-not $linkExe) {
+            Write-Error "MSVC link.exe not found on PATH; vcvars setup may have failed"
+            exit 1
+          }
+          Write-Host "Pinning rustc linker for aarch64-pc-windows-msvc -> $linkExe"
+          "CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=$linkExe" |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       # Determine build features for acceleration
       - name: Determine build features
         id: build-features
