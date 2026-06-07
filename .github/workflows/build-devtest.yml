@@ -342,10 +342,10 @@ jobs:
         if: matrix.target == 'aarch64-pc-windows-msvc'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          # x64-hosted, ARM64-target cross toolchain — the runner's VS install
-          # only ships Hostx64/arm64 tools (no native ARM64-hosted compiler),
-          # matching what the VS generator was using (-Thost=x64 -AARM64).
-          arch: amd64_arm64
+          # Native ARM64-hosted, ARM64-target — the runner (windows-11-arm) is
+          # native ARM64 hardware, so use the native toolchain rather than the
+          # x64-hosted cross.
+          arch: arm64
 
       # Determine build features for acceleration
       - name: Determine build features
