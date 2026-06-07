@@ -328,7 +328,24 @@ jobs:
           # breaks the cc-rs clang-cl invocation.
           echo "CFLAGS=-EHsc" >> "$GITHUB_ENV"
           echo "CXXFLAGS=-EHsc" >> "$GITHUB_ENV"
-          echo "Set CC/CXX=clang-cl for ARM64 Windows build"
+          # Force Ninja: cmake-rs's default Visual Studio generator drives the
+          # toolset through MSBuild and ignores CC/CXX, so it picks MSVC cl.exe
+          # and ggml fails with "MSVC is not supported for ARM, use clang".
+          # With Ninja, cmake-rs honors CC=clang-cl.
+          echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
+          echo "Set CC/CXX=clang-cl + Ninja generator for ARM64 Windows build"
+
+      # Ninja + clang-cl needs the MSVC headers, libs, and link.exe on
+      # INCLUDE/LIB/PATH. The Visual Studio generator used to handle this via
+      # MSBuild internally; with Ninja we have to set up the dev environment.
+      - name: Setup MSVC dev environment (ARM64)
+        if: matrix.target == 'aarch64-pc-windows-msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          # x64-hosted, ARM64-target cross toolchain — the runner's VS install
+          # only ships Hostx64/arm64 tools (no native ARM64-hosted compiler),
+          # matching what the VS generator was using (-Thost=x64 -AARM64).
+          arch: amd64_arm64
 
       # Determine build features for acceleration
       - name: Determine build features
