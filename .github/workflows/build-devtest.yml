@@ -347,36 +347,11 @@ jobs:
           # x64-hosted cross.
           arch: arm64
 
-      # Diagnostic: previous run showed rustc invoking
-      # 'C:\Program Files\Git\usr\bin\link.exe' (GNU coreutils) even though
-      # the post-vcvars PATH dump had MSVC's HostARM64\ARM64 at the front.
-      # Print every link.exe Windows PATH search would find and what the
-      # HostARM64\ARM64 / HostX64\ARM64 bin directories actually contain so
-      # we can see whether the native ARM64-host toolset is missing link.exe.
-      - name: Diagnose link.exe resolution (ARM64)
-        if: matrix.target == 'aarch64-pc-windows-msvc'
-        shell: pwsh
-        run: |
-          Write-Host "=== All link.exe visible on PATH (in search order) ==="
-          Get-Command link.exe -All -ErrorAction SilentlyContinue |
-            Select-Object Source | Format-Table -AutoSize
-          Write-Host "=== VCToolsInstallDir = $env:VCToolsInstallDir ==="
-          foreach ($sub in @('HostARM64\ARM64', 'HostX64\ARM64', 'HostX64\x64')) {
-            $dir = Join-Path $env:VCToolsInstallDir "bin\$sub"
-            Write-Host "--- $dir ---"
-            if (Test-Path $dir) {
-              Get-ChildItem $dir -Filter *.exe |
-                Select-Object Name | Format-Table -AutoSize
-            } else {
-              Write-Host "(does not exist)"
-            }
-          }
-
-      # vcvars puts MSVC's HostARM64\ARM64 at the front of PATH, but the
-      # previous run still resolved 'link.exe' to Git's coreutils variant.
-      # Pin the linker by absolute path so rustc doesn't rely on PATH search
-      # at all. The diagnostic step above will tell us why PATH search misses
-      # the right binary; this pin makes the build robust regardless.
+      # Pin MSVC's link.exe by absolute path so rustc doesn't rely on PATH
+      # search. The previous unpinned run resolved 'link.exe' to Git's
+      # coreutils variant (`/usr/bin/link: extra operand ...`); the cause
+      # for that resolution isn't fully understood, so the pin stays as a
+      # documented safety belt. libomp wiring lives in llama-helper/build.rs.
       - name: Pin MSVC linker for cargo (ARM64)
         if: matrix.target == 'aarch64-pc-windows-msvc'
         shell: pwsh
@@ -436,7 +411,9 @@ jobs:
             echo "Using Vulkan GPU acceleration for Windows x64"
           elif [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
             # TODO: Enable Vulkan for aarch64 once Vulkan SDK supports ARM64 Windows
-            echo "Using CPU-only mode for Windows ARM64"
+            # openmp stays on (it's a real perf win); libomp.lib is wired into
+            # the rustc link by the "Pin MSVC linker for cargo (ARM64)" step.
+            echo "Using CPU-only mode for Windows ARM64 (openmp via LLVM libomp)"
           else
             echo "Using CPU-only mode for Linux"
           fi
