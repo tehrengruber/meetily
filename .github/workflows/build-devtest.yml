@@ -325,10 +325,21 @@ jobs:
           # Enable C++ exceptions for clang-cl. Use dash form '-EHsc' rather
           # than '/EHsc': leading-slash values get MSYS-translated to
           # 'C:/Program Files/Git/EHsc' when downstream `shell: bash` steps
-          # inherit the env var. Only CXXFLAGS — not CFLAGS — because some
-          # crates (e.g. ring) compile their C with the GCC-style 'clang.exe'
-          # driver, which doesn't accept -EHsc.
-          echo "CXXFLAGS=-EHsc" >> "$GITHUB_ENV"
+          # inherit the env var. -EHsc goes on CXXFLAGS only — ring compiles
+          # its C with the GCC-style 'clang.exe' driver, which rejects it.
+          #
+          # -march: clang predefines __ARM_FEATURE_MATMUL_INT8 and
+          # __ARM_FEATURE_FP16_VECTOR_ARITHMETIC for aarch64-pc-windows-msvc, so
+          # ggml takes its i8mm / fp16 NEON code paths, but the default target
+          # leaves those codegen features off. clang then errors that the
+          # always_inline intrinsics (vmmlaq_s32, vfmaq_f16, ...) need a feature
+          # the enclosing function was compiled without. Enable the matching
+          # features so codegen agrees with the predefined macros. The GCC-style
+          # -march=...+feature syntax is accepted by both clang-cl and clang.exe,
+          # and every Windows-on-ARM device is armv8.2+ with these extensions.
+          ARCH_FLAGS="-march=armv8.2-a+fp16+dotprod+i8mm"
+          echo "CFLAGS=$ARCH_FLAGS" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=-EHsc $ARCH_FLAGS" >> "$GITHUB_ENV"
           # Force Ninja: cmake-rs's default Visual Studio generator drives the
           # toolset through MSBuild and ignores CC/CXX, so it picks MSVC cl.exe
           # and ggml fails with "MSVC is not supported for ARM, use clang".
