@@ -322,11 +322,12 @@ jobs:
         run: |
           echo "CC=clang-cl" >> "$GITHUB_ENV"
           echo "CXX=clang-cl" >> "$GITHUB_ENV"
-          # Enable exceptions. Use the dash form '-EHsc' rather than '/EHsc':
-          # leading-slash values get MSYS-translated to 'C:/Program Files/Git/EHsc'
-          # when downstream `shell: bash` steps inherit the env var, which then
-          # breaks the cc-rs clang-cl invocation.
-          echo "CFLAGS=-EHsc" >> "$GITHUB_ENV"
+          # Enable C++ exceptions for clang-cl. Use dash form '-EHsc' rather
+          # than '/EHsc': leading-slash values get MSYS-translated to
+          # 'C:/Program Files/Git/EHsc' when downstream `shell: bash` steps
+          # inherit the env var. Only CXXFLAGS — not CFLAGS — because some
+          # crates (e.g. ring) compile their C with the GCC-style 'clang.exe'
+          # driver, which doesn't accept -EHsc.
           echo "CXXFLAGS=-EHsc" >> "$GITHUB_ENV"
           # Force Ninja: cmake-rs's default Visual Studio generator drives the
           # toolset through MSBuild and ignores CC/CXX, so it picks MSVC cl.exe
