@@ -334,10 +334,15 @@ jobs:
           # leaves those codegen features off. clang then errors that the
           # always_inline intrinsics (vmmlaq_s32, vfmaq_f16, ...) need a feature
           # the enclosing function was compiled without. Enable the matching
-          # features so codegen agrees with the predefined macros. The GCC-style
-          # -march=...+feature syntax is accepted by both clang-cl and clang.exe,
-          # and every Windows-on-ARM device is armv8.2+ with these extensions.
-          ARCH_FLAGS="-march=armv8.2-a+fp16+dotprod+i8mm"
+          # features so codegen agrees with the predefined macros.
+          #
+          # Targets armv8.7-a — the deployment target is Snapdragon X (Oryon,
+          # ARMv8.7-A), which mandates dotprod and i8mm and supports FEAT_FP16
+          # (+fp16, still optional at 8.7). The build runner is even newer
+          # (GitHub windows-11-arm == Cobalt / Neoverse N2, armv9), so a higher
+          # baseline is safe at build time. The GCC-style -march=...+feature
+          # syntax is accepted by both clang-cl (ggml) and clang.exe (ring).
+          ARCH_FLAGS="-march=armv8.7-a+fp16"
           echo "CFLAGS=$ARCH_FLAGS" >> "$GITHUB_ENV"
           echo "CXXFLAGS=-EHsc $ARCH_FLAGS" >> "$GITHUB_ENV"
           # Force Ninja: cmake-rs's default Visual Studio generator drives the
